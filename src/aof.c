@@ -329,12 +329,17 @@ int startAppendOnly(void) {
 }
 
 /* This is a wrapper to the write syscall in order to retry on short writes
- * or if the syscall gets interrupted. It could look strange that we retry
- * on short writes given that we are writing to a block device: normally if
- * the first call is short, there is a end-of-space condition, so the next
- * is likely to fail. However apparently in modern systems this is no longer
- * true, and in general it looks just more resilient to retry the write. If
- * there is an actual error condition we'll get it at the next try. */
+ * or if the syscall gets interrupted. 
+ * 这是写系统调用的包装器，以便在短写操作或系统调用中断时重试
+ * It could look strange that we retry on short writes given that we are writing to a block device: 
+ * 如果我们对块设备进行写操作，那么重试短写操作可能看起来很奇怪
+ * normally if the first call is short, there is a end-of-space condition so the next is likely to fail.
+ * 通常，如果第一个调用很短，就会出现空间结束的条件，从而导致next可能会失败
+ * However apparently in modern systems this is no longer true, and in general it looks just more resilient to retry the write. 
+ * 然而，在现代系统中，这显然不再是正确的，而且在一般情况下，重试写入看起来更有弹性
+ * If there is an actual error condition we'll get it at the next try. 
+ * 如果存在实际的错误条件，我们将在下一次尝试时获得它
+ * */
 ssize_t aofWrite(int fd, const char *buf, size_t len) {
     ssize_t nwritten = 0, totwritten = 0;
 
@@ -355,24 +360,29 @@ ssize_t aofWrite(int fd, const char *buf, size_t len) {
 }
 
 /* Write the append only file buffer on disk.
- *
+ * 在磁盘上写入仅追加文件缓冲区。
  * Since we are required to write the AOF before replying to the client,
- * and the only way the client socket can get a write is entering when the
- * the event loop, we accumulate all the AOF writes in a memory
+ * 因为我们需要在回复客户之前写AOF，
+ * and the only way the client socket can get a write is entering when the event loop, 
+ * 客户端套接字获得写操作的唯一方法是在时间循环
+ * we accumulate all the AOF writes in a memory
  * buffer and write it on disk using this function just before entering
  * the event loop again.
- *
+ * 在再次进入事件循环之前，我们在内存缓冲区中积累所有的AOF写操作，并使用这个函数将其写到磁盘上
  * About the 'force' argument:
- *
+ * 
  * When the fsync policy is set to 'everysec' we may delay the flush if there
  * is still an fsync() going on in the background thread, since for instance
  * on Linux write(2) will be blocked by the background fsync anyway.
  * When this happens we remember that there is some aof buffer to be
  * flushed ASAP, and will try to do that in the serverCron() function.
- *
+ * 当fsync策略被设置为'everysec'时，如果后台线程中仍然有fsync()
+ * 我们可能会延迟刷新，因为例如在Linux上，write(2)无论如何都会被后台fsync阻止
+ * 当发生这种情况时，我们要记住有一些aof缓冲区需要尽快刷新
+ * 并将尝试在serverCron()函数中进行刷新。
  * However if force is set to 1 we'll write regardless of the background
  * fsync. */
-#define AOF_WRITE_LOG_ERROR_RATE 30 /* Seconds between errors logging. */
+#define AOF_WRITE_LOG_ERROR_RATE 30 /* Seconds between errors logging. 记录错误之间的秒数 */
 void flushAppendOnlyFile(int force) {
     ssize_t nwritten;
     int sync_in_progress = 0;
