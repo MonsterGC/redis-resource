@@ -244,20 +244,20 @@ void aof_background_fsync(int fd) {
 /* 如果AOFRW子进程存在，则终止 */
 void killAppendOnlyChild(void) {
     int statloc;
-    /* No AOFRW child? return. */
+    /* No AOFRW child? return. 如果没有AOFRW子进程，return*/
     if (server.aof_child_pid == -1) return;
-    /* Kill AOFRW child, wait for child exit. */
+    /* Kill AOFRW child, wait for child exit. 杀掉AOFRW子进程，等待子进程退出*/
     serverLog(LL_NOTICE,"Killing running AOF rewrite child: %ld",
         (long) server.aof_child_pid);
     if (kill(server.aof_child_pid,SIGUSR1) != -1) {
         while(wait3(&statloc,0,NULL) != server.aof_child_pid);
     }
-    /* Reset the buffer accumulating changes while the child saves. */
+    /* Reset the buffer accumulating changes while the child saves. 在子进程保存时，重新设置累积更改的缓冲区 */
     aofRewriteBufferReset();
     aofRemoveTempFile(server.aof_child_pid);
     server.aof_child_pid = -1;
     server.aof_rewrite_time_start = -1;
-    /* Close pipes used for IPC between the two processes. */
+    /* Close pipes used for IPC between the two processes. 关闭两个进程之间用于IPC的管道 */
     aofClosePipes();
     closeChildInfoPipe();
     updateDictResizePolicy();
