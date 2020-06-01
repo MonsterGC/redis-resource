@@ -266,7 +266,7 @@ void killAppendOnlyChild(void) {
 /* Called when the user switches from "appendonly yes" to "appendonly no"
  * 当用户从"appendonly yes"切换到"appendonly no"时调用
  * at runtime using the CONFIG command. 
- * 在运行时使用CONFIG命令。
+ * 在运行时使用CONFIG命令
  * */
 void stopAppendOnly(void) {
     serverAssert(server.aof_state != AOF_OFF);
