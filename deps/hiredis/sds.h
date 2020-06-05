@@ -44,34 +44,58 @@
 
 typedef char *sds;
 
+/* =========================================
+ * 实现目的：防止len和free字段浪费太多空间
+ * 一个int占用4个字节
+ * 当字符串比较短的时候，一个字节就已经够存储了
+ *
+ * 注意：__attribute__ ((__packed__))！！！
+ * 一般情况下，结构体会按其所有变量大小的最小公倍数做字节对齐
+ * 使用packed之后，结构体变为按1字节对齐
+ * 目的：
+ * 1、节省内存
+ * 2、SDS返回给上层的，不是结构体首地址，而是指向内容的buf指针
+ * 即：无论是sdshdr8\sdshdr16\sdshdr32都可以通过(char)*sh+hdrlen得到buf首地址
+ * (hdrlen结构体长度，通过sizeof得到)
+ * =========================================
+*/
+
 /* Note: sdshdr5 is never used, we just access the flags byte directly.
- * However is here to document the layout of type 5 SDS strings. */
+ * 注意sdshdr5从不会被使用，只是访问了flags标志字节
+ * However is here to document the layout of type 5 SDS strings. 
+ * 但是，在这里记录类型5 SDS字符串的布局。
+ */
 struct __attribute__ ((__packed__)) sdshdr5 {
-    unsigned char flags; /* 3 lsb of type, and 5 msb of string length */
+    unsigned char flags; /* 3 lsb of type, and 5 msb of string length*/
+    /*  前3个位用来存储类型，后5个位用来存储长度 */
     char buf[];
 };
 struct __attribute__ ((__packed__)) sdshdr8 {
     uint8_t len; /* used */
     uint8_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
+    /*前三个位用来存储类型, 后5个闲置未使用    	    */
     char buf[];
 };
 struct __attribute__ ((__packed__)) sdshdr16 {
     uint16_t len; /* used */
     uint16_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
+	/*前三个位用来存储类型, 后5个闲置未使用    	    */
     char buf[];
 };
 struct __attribute__ ((__packed__)) sdshdr32 {
     uint32_t len; /* used */
     uint32_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
+	/*前三个位用来存储类型, 后5个闲置未使用    	    */
     char buf[];
 };
 struct __attribute__ ((__packed__)) sdshdr64 {
     uint64_t len; /* used */
     uint64_t alloc; /* excluding the header and null terminator */
     unsigned char flags; /* 3 lsb of type, 5 unused bits */
+	/*前三个位用来存储类型, 后5个闲置未使用    	    */
     char buf[];
 };
 

@@ -41,7 +41,13 @@
 
 const char *SDS_NOINIT = "SDS_NOINIT";
 
+/* 根据类型分配存储结构 */
 static inline int sdsHdrSize(char type) {
+
+	/* 由于flag表示类型的3bit 所以SDS_TYPE_MASK 为 7 */
+	/* 当type&SDS_TYPE_MASK时候可以得出类型 */
+	
+	/* =========> 为什么不直接type? */
     switch(type&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
             return sizeof(struct sdshdr5);
@@ -57,13 +63,18 @@ static inline int sdsHdrSize(char type) {
     return 0;
 }
 
+/* 根据数据长度获取类型 */
 static inline char sdsReqType(size_t string_size) {
+	/* 长度 < 32 */
     if (string_size < 1<<5)
         return SDS_TYPE_5;
+	/* 32 <= 长度 < 256 */
     if (string_size < 1<<8)
         return SDS_TYPE_8;
+	/* 256 <= 长度 < 65536 */
     if (string_size < 1<<16)
         return SDS_TYPE_16;
+	
 #if (LONG_MAX == LLONG_MAX)
     if (string_size < 1ll<<32)
         return SDS_TYPE_32;
@@ -82,11 +93,11 @@ static inline char sdsReqType(size_t string_size) {
  * even if you create an sds string with:
  *
  * mystring = sdsnewlen("abc",3);
- *
+ * 
  * You can print the string with printf() as there is an implicit \0 at the
  * end of the string. However the string is binary safe and can contain
  * \0 characters in the middle, as the length is stored in the sds header. */
-sds sdsnewlen(const void *init, size_t initlen) {
+sds sdsnewlen(const void *init, size_t initlen) {  // sdsnewlen("abc",3)
     void *sh;
     sds s;
     char type = sdsReqType(initlen);
