@@ -86,35 +86,45 @@ static inline char sdsReqType(size_t string_size) {
 
 /* Create a new sds string with the content specified by the 'init' pointer
  * and 'initlen'.
+ * 创建一个string(sds)类型，并且指向init指针
  * If NULL is used for 'init' the string is initialized with zero bytes.
+ * 如果init为NULL，则初始化为0byte
  * If SDS_NOINIT is used, the buffer is left uninitialized;
- *
+ * 如果SDS_NOINIT没被使用，缓存区不会被初始化
  * The string is always null-termined (all the sds strings are, always) so
  * even if you create an sds string with:
- *
+ * (自动加\0作为结束)
  * mystring = sdsnewlen("abc",3);
  * 
  * You can print the string with printf() as there is an implicit \0 at the
- * end of the string. However the string is binary safe and can contain
- * \0 characters in the middle, as the length is stored in the sds header. */
+ * end of the string.
+ * 在这个字符串后面会隐藏着\0，因此可以直接使用printf()来打印字符串
+ * However the string is binary safe and can contain
+ * \0 characters in the middle, as the length is stored in the sds header. 
+ * 由于字符串的长度保存在sds头部，所以这个字符串是二进制安全的，并且包含了\0
+ */
 sds sdsnewlen(const void *init, size_t initlen) {  // sdsnewlen("abc",3)
     void *sh;
     sds s;
-    char type = sdsReqType(initlen);
+    char type = sdsReqType(initlen);  // 根据长度获取存储类型
     /* Empty strings are usually created in order to append. Use type 8
-     * since type 5 is not good at this. */
+     * since type 5 is not good at this. 
+	 * 当空字符串被创建的时候，会自动转成SDS_TYPE_8
+	 * ==========================>
+	 * 目的：防止频繁更新而导致扩容
+     */
     if (type == SDS_TYPE_5 && initlen == 0) type = SDS_TYPE_8;
     int hdrlen = sdsHdrSize(type);
-    unsigned char *fp; /* flags pointer. */
+    unsigned char *fp; /* flags pointer. 字段flags用来标识类型 */
 
-    sh = s_malloc(hdrlen+initlen+1);
+    sh = s_malloc(hdrlen+initlen+1);  // 由于后面会自动添加一个\0,所以+1
     if (sh == NULL) return NULL;
     if (init==SDS_NOINIT)
         init = NULL;
-    else if (!init)
-        memset(sh, 0, hdrlen+initlen+1);
-    s = (char*)sh+hdrlen;
-    fp = ((unsigned char*)s)-1;
+    else if (!init) // 如果init为NULL，则初始化为0byte
+        memset(sh, 0, hdrlen+initlen+1); 
+    s = (char*)sh+hdrlen; 
+    fp = ((unsigned char*)s)-1; // 指向flags位置
     switch(type) {
         case SDS_TYPE_5: {
             *fp = type | (initlen << SDS_TYPE_BITS);
@@ -151,28 +161,39 @@ sds sdsnewlen(const void *init, size_t initlen) {  // sdsnewlen("abc",3)
     }
     if (initlen && init)
         memcpy(s, init, initlen);
-    s[initlen] = '\0';
+    s[initlen] = '\0'; // 自动追加上一个\0
     return s;
 }
 
 /* Create an empty (zero length) sds string. Even in this case the string
- * always has an implicit null term. */
+ * always has an implicit null term. 
+ * 创建一个为NULL的sds字符串。即使在这种情况下，字符串始终具有隐式的空术语
+ */
 sds sdsempty(void) {
-    return sdsnewlen("",0);
+    return sdsnewlen("",0); // 后面会添加\0
 }
 
-/* Create a new sds string starting from a null terminated C string. */
+/* Create a new sds string starting from a null terminated C string. 
+ * 从C字符串开头，遇到\0结束的字符串，新建一个sds字符串
+ */
 sds sdsnew(const char *init) {
     size_t initlen = (init == NULL) ? 0 : strlen(init);
     return sdsnewlen(init, initlen);
 }
 
-/* Duplicate an sds string. */
+/* Duplicate an sds string. 
+ * 创建一个重复的sds字符串
+ */
 sds sdsdup(const sds s) {
     return sdsnewlen(s, sdslen(s));
 }
 
-/* Free an sds string. No operation is performed if 's' is NULL. */
+/* Free an sds string. No operation is performed if 's' is NULL. 
+ * 释放一个sds字符串。当s为NULL的时候，不会被执行
+ * ==============？？？=================
+ * s[-1]表示什么意思？表示flags
+ * ==============？？？=================
+ */
 void sdsfree(sds s) {
     if (s == NULL) return;
     s_free((char*)s-sdsHdrSize(s[-1]));
@@ -180,17 +201,21 @@ void sdsfree(sds s) {
 
 /* Set the sds string length to the length as obtained with strlen(), so
  * considering as content only up to the first null term character.
- *
- * This function is useful when the sds string is hacked manually in some
- * way, like in the following example:
- *
+ * 使用sdslen()去获取sds字符串长度的时候，获取的是len的值
+ * This function is useful when the sds string is hacked manually in some way 
+ * 当以某种方式手动更新sds字符串时，此函数非常有用
+ * like in the following example:
+ * 
  * s = sdsnew("foobar");
  * s[2] = '\0';
  * sdsupdatelen(s);
  * printf("%d\n", sdslen(s));
  *
- * The output will be "2", but if we comment out the call to sdsupdatelen()
+ * The output will be "2"
+ * but if we comment out the call to sdsupdatelen()
  * the output will be "6" as the string was modified but the logical length
+ * 当我们注释掉sdsupdatelen()的时候，输出6
+ * 因为字符串被修改了，但是len值仍然是6字节
  * remains 6 bytes. */
 void sdsupdatelen(sds s) {
     size_t reallen = strlen(s);
@@ -200,7 +225,10 @@ void sdsupdatelen(sds s) {
 /* Modify an sds string in-place to make it empty (zero length).
  * However all the existing buffer is not discarded but set as free space
  * so that next append operations will not require allocations up to the
- * number of bytes previously available. */
+ * number of bytes previously available. 
+ * 将sds字符串修改为空
+ * 不会丢弃所有现有的缓冲区，而是作为一个闲置的空间，以便以后追加，不用分配内存
+ */
 void sdsclear(sds s) {
     sdssetlen(s, 0);
     s[0] = '\0';
