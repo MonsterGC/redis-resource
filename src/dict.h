@@ -42,34 +42,54 @@
 #define DICT_ERR 1
 
 /* Unused arguments generate annoying warnings... */
+/* 未使用的参数会生成恼人的警告 */
 #define DICT_NOTUSED(V) ((void) V)
 
 typedef struct dictEntry {
+	// 键
     void *key;
+	// 值
     union {
         void *val;
         uint64_t u64;
         int64_t s64;
         double d;
     } v;
+	// 下一个哈希表节点，链表构成
     struct dictEntry *next;
 } dictEntry;
 
+/* dictType结构保存了一些用于操作特定键值对的函数
+ * 例如:hash = dict->type->hashFunction(key)
+ */
 typedef struct dictType {
-    uint64_t (*hashFunction)(const void *key);
+	/* 计算哈希值的函数 */
+	uint64_t (*hashFunction)(const void *key);
+	/* 复制键的函数 */
     void *(*keyDup)(void *privdata, const void *key);
+	/* 复制值的函数 */
     void *(*valDup)(void *privdata, const void *obj);
+	/* 对比键的函数 */
     int (*keyCompare)(void *privdata, const void *key1, const void *key2);
+	/* 销毁键的函数 */
     void (*keyDestructor)(void *privdata, void *key);
-    void (*valDestructor)(void *privdata, void *obj);
+	/* 销毁值的函数 */
+	void (*valDestructor)(void *privdata, void *obj);
 } dictType;
 
 /* This is our hash table structure. Every dictionary has two of this as we
- * implement incremental rehashing, for the old to the new table. */
+ * implement incremental rehashing, for the old to the new table. 
+ * 这个是哈希表结构，每个字典有两个哈希表，用于实现自增rehash，为了旧变新
+ * dictht ht[2]; 详细请看dict结构
+ */
 typedef struct dictht {
+	/* 哈希表数组 */
     dictEntry **table;
+	/* 哈希表大小 */
     unsigned long size;
+	/* 哈希表大小掩码，用于计算索引值*/
     unsigned long sizemask;
+	/* 该哈希表已有节点数量 */
     unsigned long used;
 } dictht;
 
@@ -77,6 +97,7 @@ typedef struct dict {
     dictType *type;
     void *privdata;
     dictht ht[2];
+	/* 如果rehashidx设置为-1则不进行rehash */
     long rehashidx; /* rehashing not in progress if rehashidx == -1 */
     unsigned long iterators; /* number of iterators currently running */
 } dict;
